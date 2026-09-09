@@ -88,5 +88,8 @@ docs/_build/
 !static/lib/
 
 # on-prem deployment (added by odoo-deploy tooling)
+# Everything below is generated on the VM by deployment/deploy.sh.
 deployment/addons/
 deployment/.env
+deployment/odoo.conf
+deployment/versions.lock

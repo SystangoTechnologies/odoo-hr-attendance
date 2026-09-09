@@ -1,28 +1,18 @@
-version: "3.8"
-
-# One Odoo instance per addon repo (Odoo has no native path-prefix routing),
-# fronted by nginx which maps /HRattendance, /timesheet, /purchaseworkflow,
-# /HRexpense to each instance. Shared Postgres server, separate DB per service.
-# Secrets/config come from .env (see .env.example) — never hardcode here.
+# Single Odoo 18 instance serving all four addon repos on one port, which is
+# how the stack runs locally. Odoo cannot be served under a URL sub-path, so
+# the previous "one instance per repo behind /HRattendance, /timesheet, ..."
+# layout could never have worked -- the web client requests /web/assets/...
+# absolutely and those requests missed every proxy route.
 #
-# This compose file lives inside the odoo-hr-attendance repo itself, under
-# deployment/. The hr-attendance service mounts the repo root (../) directly
-# as its addons source; the other 3 services are cloned into ./addons by
-# clone.sh.
-
-x-odoo-common: &odoo-common
-  image: odoo:${ODOO_VERSION:-17.0}
-  restart: unless-stopped
-  depends_on:
-    - db
-  environment:
-    HOST: db
-    USER: ${POSTGRES_USER}
-    PASSWORD: ${POSTGRES_PASSWORD}
+# This file lives in the odoo-hr-attendance repo under deployment/. That repo
+# is mounted from its own checkout (../); the other three addon repos and the
+# 15 OCA dependency repos are cloned into ./addons by clone.sh.
+#
+# Secrets come from .env (see .env.example) -- never hardcode them here.
 
 services:
   db:
-    image: postgres:15
+    image: postgres:16
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -30,74 +20,65 @@ services:
       POSTGRES_DB: postgres
     volumes:
       - db_data:/var/lib/postgresql/data
+    # Odoo crash-loops if it connects before Postgres is accepting queries.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Not published. Uncomment for host-only debugging access.
+    # ports:
+    #   - "127.0.0.1:5434:5432"
 
-  odoo-hr-attendance:
-    <<: *odoo-common
+  odoo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        ODOO_VERSION: ${ODOO_VERSION:-18.0}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
       HOST: db
       USER: ${POSTGRES_USER}
       PASSWORD: ${POSTGRES_PASSWORD}
-      DB_NAME: hr_attendance
-      ADMIN_PASSWORD: ${ODOO_ADMIN_PASSWORD}
-      LIST_DB: "False"
     volumes:
-      - ../:/mnt/extra-addons
-      - odoo_attendance_data:/var/lib/odoo
-    command: >
-      odoo -d hr_attendance --db_host=db --db_user=${POSTGRES_USER} --db_password=${POSTGRES_PASSWORD}
-      --addons-path=/mnt/extra-addons,/usr/lib/python3/dist-packages/odoo/addons
-      --proxy-mode
+      - odoo_data:/var/lib/odoo
+      - ./odoo.conf:/etc/odoo/odoo.conf:ro
 
-  odoo-timesheet:
-    <<: *odoo-common
-    environment:
-      HOST: db
-      USER: ${POSTGRES_USER}
-      PASSWORD: ${POSTGRES_PASSWORD}
-      DB_NAME: timesheet
-      ADMIN_PASSWORD: ${ODOO_ADMIN_PASSWORD}
-      LIST_DB: "False"
-    volumes:
-      - ./addons/odoo-timesheet:/mnt/extra-addons
-      - odoo_timesheet_data:/var/lib/odoo
-    command: >
-      odoo -d timesheet --db_host=db --db_user=${POSTGRES_USER} --db_password=${POSTGRES_PASSWORD}
-      --addons-path=/mnt/extra-addons,/usr/lib/python3/dist-packages/odoo/addons
-      --proxy-mode
+      # This repo, served straight from its own checkout.
+      - ../:/mnt/extra-addons/hr-attendance:ro
+      - ./local_addons:/mnt/extra-addons/local_addons:ro
 
-  odoo-purchase-workflow:
-    <<: *odoo-common
-    environment:
-      HOST: db
-      USER: ${POSTGRES_USER}
-      PASSWORD: ${POSTGRES_PASSWORD}
-      DB_NAME: purchase_workflow
-      ADMIN_PASSWORD: ${ODOO_ADMIN_PASSWORD}
-      LIST_DB: "False"
-    volumes:
-      - ./addons/odoo-purchase-workflow:/mnt/extra-addons
-      - odoo_purchase_data:/var/lib/odoo
-    command: >
-      odoo -d purchase_workflow --db_host=db --db_user=${POSTGRES_USER} --db_password=${POSTGRES_PASSWORD}
-      --addons-path=/mnt/extra-addons,/usr/lib/python3/dist-packages/odoo/addons
-      --proxy-mode
+      # Sibling Systango repos (clone.sh).
+      - ./addons/systango/odoo-timesheet:/mnt/extra-addons/timesheet:ro
+      - ./addons/systango/odoo-purchase-workflow:/mnt/extra-addons/purchase-workflow:ro
+      - ./addons/systango/odoo-hr-expense:/mnt/extra-addons/hr-expense:ro
 
-  odoo-hr-expense:
-    <<: *odoo-common
-    environment:
-      HOST: db
-      USER: ${POSTGRES_USER}
-      PASSWORD: ${POSTGRES_PASSWORD}
-      DB_NAME: hr_expense
-      ADMIN_PASSWORD: ${ODOO_ADMIN_PASSWORD}
-      LIST_DB: "False"
-    volumes:
-      - ./addons/odoo-hr-expense:/mnt/extra-addons
-      - odoo_expense_data:/var/lib/odoo
-    command: >
-      odoo -d hr_expense --db_host=db --db_user=${POSTGRES_USER} --db_password=${POSTGRES_PASSWORD}
-      --addons-path=/mnt/extra-addons,/usr/lib/python3/dist-packages/odoo/addons
-      --proxy-mode
+      # OCA dependencies (clone.sh). Without these almost nothing in the four
+      # repos is installable -- their manifests depend on these modules.
+      - ./addons/oca/server-ux:/mnt/extra-addons/server-ux:ro
+      - ./addons/oca/server-tools:/mnt/extra-addons/server-tools:ro
+      - ./addons/oca/account-invoicing:/mnt/extra-addons/account-invoicing:ro
+      - ./addons/oca/account-analytic:/mnt/extra-addons/account-analytic:ro
+      - ./addons/oca/hr:/mnt/extra-addons/hr:ro
+      - ./addons/oca/hr-holidays:/mnt/extra-addons/hr-holidays:ro
+      - ./addons/oca/calendar:/mnt/extra-addons/calendar:ro
+      - ./addons/oca/brand:/mnt/extra-addons/brand:ro
+      - ./addons/oca/product-attribute:/mnt/extra-addons/product-attribute:ro
+      - ./addons/oca/project:/mnt/extra-addons/project:ro
+      - ./addons/oca/reporting-engine:/mnt/extra-addons/reporting-engine:ro
+      - ./addons/oca/sale-workflow:/mnt/extra-addons/sale-workflow:ro
+      - ./addons/oca/stock-logistics-workflow:/mnt/extra-addons/stock-logistics-workflow:ro
+      - ./addons/oca/stock-logistics-warehouse:/mnt/extra-addons/stock-logistics-warehouse:ro
+      - ./addons/oca/web:/mnt/extra-addons/web:ro
+    # Blanks out deployment/ inside the addons mount so .env (Postgres and
+    # master passwords) is not readable from within the Odoo container.
+    tmpfs:
+      - /mnt/extra-addons/hr-attendance/deployment
+    command: ["odoo", "-c", "/etc/odoo/odoo.conf", "-d", "${ODOO_DB_NAME:-odoo}"]
 
   nginx:
     image: nginx:stable-alpine
@@ -107,14 +88,8 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
-      - odoo-hr-attendance
-      - odoo-timesheet
-      - odoo-purchase-workflow
-      - odoo-hr-expense
+      - odoo
 
 volumes:
   db_data:
-  odoo_attendance_data:
-  odoo_timesheet_data:
-  odoo_purchase_data:
-  odoo_expense_data:
+  odoo_data:

@@ -1,0 +1,8 @@
+# These are executed on a Linux VM. Committed from Windows they would
+# otherwise pick up CRLF and fail with "bad interpreter: /usr/bin/env bash^M".
+*.sh            text eol=lf
+Jenkinsfile     text eol=lf
+*.conf          text eol=lf
+*.template      text eol=lf
+docker-compose*.yml text eol=lf
+Dockerfile      text eol=lf

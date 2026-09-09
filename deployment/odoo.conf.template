@@ -1,0 +1,38 @@
+; Rendered to odoo.conf by deploy.sh; the placeholder values come from .env.
+; Do not edit odoo.conf directly; it is regenerated on every deploy and is
+; gitignored because it contains secrets.
+[options]
+admin_passwd = __ADMIN_PASSWORD__
+db_host = db
+db_port = 5432
+db_user = __DB_USER__
+db_password = __DB_PASSWORD__
+
+; Single instance serving all four repos. Kept on one line on purpose:
+; ConfigParser joins indented continuation lines with newlines, which
+; would leak into the split(',') path list.
+addons_path = /usr/lib/python3/dist-packages/odoo/addons,/mnt/extra-addons/hr-attendance,/mnt/extra-addons/timesheet,/mnt/extra-addons/purchase-workflow,/mnt/extra-addons/hr-expense,/mnt/extra-addons/local_addons,/mnt/extra-addons/server-ux,/mnt/extra-addons/server-tools,/mnt/extra-addons/account-invoicing,/mnt/extra-addons/account-analytic,/mnt/extra-addons/hr,/mnt/extra-addons/hr-holidays,/mnt/extra-addons/calendar,/mnt/extra-addons/brand,/mnt/extra-addons/product-attribute,/mnt/extra-addons/project,/mnt/extra-addons/reporting-engine,/mnt/extra-addons/sale-workflow,/mnt/extra-addons/stock-logistics-workflow,/mnt/extra-addons/stock-logistics-warehouse,/mnt/extra-addons/web
+
+data_dir = /var/lib/odoo
+http_port = 8069
+gevent_port = 8072
+
+; Behind nginx: trust X-Forwarded-* so Odoo builds correct absolute URLs.
+proxy_mode = True
+
+; Only one database is served, so hide the manager and pin the name.
+list_db = False
+dbfilter = ^__DB_NAME__$
+
+; Must be >= 1. At 0 Odoo serves websockets in-process on 8069 and nothing
+; listens on gevent_port, which breaks the nginx /websocket route.
+workers = __WORKERS__
+
+; Defaults (60s cpu / 120s real) are far too low to install the ~160 modules
+; in these repos, and long OCA reports blow through them at runtime too.
+limit_time_cpu = 600
+limit_time_real = 1200
+limit_memory_soft = 2147483648
+limit_memory_hard = 2684354560
+
+log_level = info
