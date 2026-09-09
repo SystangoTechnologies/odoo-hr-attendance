@@ -93,9 +93,13 @@ db_exists() {
 MODULES="$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' modules.txt | tr -d '[:space:]' | paste -sd, -)"
 MODULE_COUNT="$(printf '%s' "$MODULES" | tr ',' '\n' | wc -l)"
 
-# Module install/upgrade always runs single-process: with workers > 0 the
-# forked children race the schema migration.
+# A schema migration must not run while the live instance is serving: two Odoo
+# processes on one database race the registry and deadlock on the same rows.
+# Stop odoo first. nginx stays up so users get a 502 rather than a refused
+# connection. Always single-process -- with workers > 0 the forked children
+# race the migration too.
 odoo_oneshot() {
+  docker compose stop odoo >/dev/null 2>&1 || true
   docker compose run --rm --no-TTY odoo \
     odoo -c /etc/odoo/odoo.conf -d "$DB_NAME" "$@" \
     --workers=0 --max-cron-threads=0 --stop-after-init
@@ -107,7 +111,9 @@ if ! db_exists; then
   odoo_oneshot -i "$MODULES" --without-demo=all
 elif [ "$UPGRADE" = "1" ]; then
   echo "Upgrading $MODULE_COUNT modules in '$DB_NAME'..."
-  odoo_oneshot -u "$MODULES"
+  # -i alongside -u: entries newly added to modules.txt get installed,
+  # already-installed ones get upgraded. Each flag is a no-op for the other case.
+  odoo_oneshot -i "$MODULES" -u "$MODULES"
 else
   echo "Database '$DB_NAME' exists -- skipping module install."
   echo "Run './deploy.sh --upgrade' to apply pulled code changes."

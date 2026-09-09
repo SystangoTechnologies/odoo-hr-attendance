@@ -73,3 +73,43 @@ in the running deploy.
   `docker-compose.yml` for host-only debugging.
 - `admin_passwd` can only be set via the config file — the official Odoo image
   ignores `ADMIN_PASSWORD`/`LIST_DB` environment variables.
+
+## CI/CD
+
+The Jenkinsfile lives only in `odoo-hr-attendance`. `checkout scm` checks out
+this repo and rsyncs it to the VM; `clone.sh` then fetches the other three
+repos fresh from branch `18.0` on every run. So a change to **any** of the four
+repos does reach the VM once the job runs.
+
+What the job does **not** do yet is start itself:
+
+- `triggers { cron(...) }` is commented out.
+- Jenkins' "GitHub hook trigger for GITScm polling" only fires for the repo in
+  the job's SCM — that is `odoo-hr-attendance` alone. A push to
+  `odoo-timesheet`, `odoo-purchase-workflow` or `odoo-hr-expense` will **not**
+  start this job until it is wired explicitly.
+
+To trigger from all four, either:
+
+1. **Generic Webhook Trigger plugin** — give the job a token, then add a
+   webhook in each of the four GitHub repos pointing at
+   `https://<jenkins>/generic-webhook-trigger/invoke?token=<token>`; or
+2. **GitHub Actions** — a small workflow in each repo that POSTs to
+   `https://<jenkins>/job/<job>/buildWithParameters?token=<token>`.
+
+Either way, add a concurrency guard so two pushes cannot deploy at once.
+
+### Adding a new module
+
+`modules.txt` is the source of truth. A module that is not listed there is
+never installed, no matter which repo it lands in — `odoo -u` only upgrades
+modules that are already installed. Add the module name to `modules.txt` in
+the same change and the next `./deploy.sh --upgrade` will install it.
+
+### Downtime
+
+`--upgrade` stops the `odoo` container, runs `-i`/`-u` over all modules
+single-process, then starts it again. nginx stays up and serves 502s during
+the window, which for 160 modules is several minutes. Upgrading only the
+modules that actually changed would shorten this considerably but is not
+implemented.
