@@ -68,7 +68,12 @@ export ODOO_ADMIN_PASSWORD POSTGRES_USER POSTGRES_PASSWORD DB_NAME WORKERS
     print
   }' odoo.conf.template > odoo.conf
 )
-chmod 600 odoo.conf
+# 644, not 600: the odoo container runs as its own odoo:odoo user (uid/gid
+# 100/101 in the official image), unrelated to whatever host user renders
+# this file, so an owner-only mode leaves the container unable to read its
+# own config (wait-for-psql.py dies with "Permission denied" / NoSectionError
+# on /etc/odoo/odoo.conf before Odoo even starts).
+chmod 644 odoo.conf
 
 # --- addon repos -----------------------------------------------------------
 ./clone.sh
@@ -90,7 +95,10 @@ db_exists() {
 }
 
 # Strip comments/blanks and join into the comma-separated list Odoo expects.
-MODULES="$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' modules.txt | tr -d '[:space:]' | paste -sd, -)"
+# tr must only drop [:blank:] (space/tab), not [:space:] -- the latter also
+# deletes newlines, collapsing every line into one and leaving paste with
+# nothing to join, so MODULES silently came out as one run-on module name.
+MODULES="$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' modules.txt | tr -d '[:blank:]' | paste -sd, -)"
 MODULE_COUNT="$(printf '%s' "$MODULES" | tr ',' '\n' | wc -l)"
 
 # A schema migration must not run while the live instance is serving: two Odoo
