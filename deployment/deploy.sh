@@ -98,7 +98,10 @@ db_exists() {
 # tr must only drop [:blank:] (space/tab), not [:space:] -- the latter also
 # deletes newlines, collapsing every line into one and leaving paste with
 # nothing to join, so MODULES silently came out as one run-on module name.
-MODULES="$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' modules.txt | tr -d '[:blank:]' | paste -sd, -)"
+# CR is stripped explicitly too: a modules.txt written or checked out on
+# Windows arrives CRLF, CR is not [:blank:], and Odoo then skips every
+# module with only a warning -- the deploy 'succeeds' having installed none.
+MODULES="$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' modules.txt | tr -d '[:blank:]\r' | paste -sd, -)"
 MODULE_COUNT="$(printf '%s' "$MODULES" | tr ',' '\n' | wc -l)"
 
 # A schema migration must not run while the live instance is serving: two Odoo

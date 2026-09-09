@@ -1,6 +1,14 @@
 # Modules installed by deploy.sh, one per line. '#' comments and blank
 # lines are ignored. Regenerate with scripts/list_installable.py in the
 # odoo-setup workspace; this is the union of its four .install-lists files.
+#
+# EXCLUDED: purchase_order_etd_eta. It rewrites the t-if on the purchase
+# order report's date_planned div to o.display_expected_arrival(), but only
+# depends on 'purchase'. Once installed, core purchase_stock can no longer
+# locate //div[@t-if='o.date_planned'] and its install/upgrade dies with a
+# ParseError. Several purchase_stock_* modules here require purchase_stock,
+# so etd_eta is the one that has to go.
+crm_timesheet
 hr_attendance_calendar_view
 hr_attendance_employee_calendar_planning
 hr_attendance_full_history
@@ -11,6 +19,7 @@ hr_attendance_rest_time_included
 hr_attendance_rfid
 hr_contract_update_overtime
 hr_employee_cost_history
+hr_expense_advance_clearing
 hr_expense_advance_clearing_sequence
 hr_expense_cancel
 hr_expense_exception
@@ -44,6 +53,7 @@ hr_timesheet_time_control_begin_end
 hr_timesheet_time_type
 hr_timesheet_type_non_billable
 hr_timesheet_unusual_days
+partner_supplierinfo_smartbutton
 procurement_purchase_no_grouping
 procurement_purchase_sale_no_grouping
 product_main_seller
@@ -87,7 +97,6 @@ purchase_order_approval_block
 purchase_order_approved
 purchase_order_archive
 purchase_order_date_approve_editable
-purchase_order_etd_eta
 purchase_order_general_discount
 purchase_order_internal_note
 purchase_order_line_description
@@ -158,6 +167,3 @@ stock_move_purchase_price_update
 supplier_calendar
 vendor_transport_lead_time
 web_disable_push
-web_disable_pushcrm_timesheet
-web_disable_pushhr_expense_advance_clearing
-web_disable_pushpartner_supplierinfo_smartbutton

@@ -6,3 +6,5 @@ Jenkinsfile     text eol=lf
 *.template      text eol=lf
 docker-compose*.yml text eol=lf
 Dockerfile      text eol=lf
+# The deploy parses this on Linux; CRLF here makes Odoo skip every module.
+modules.txt     text eol=lf
