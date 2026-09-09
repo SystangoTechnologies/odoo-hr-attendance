@@ -31,7 +31,7 @@
         <field name="priority">500</field>
         <field name="arch" type="xml">
             <field name="worked_hours" position="after">
-                <field name="rest_hours" widget="float_time" />
+                <field name="rest_hours" widget="float" />
                 <button
                     name="action_view_rest_times"
                     title="Rest time"
