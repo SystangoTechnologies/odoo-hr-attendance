@@ -9,5 +9,15 @@ class ResUsers(models.Model):
 
     def action_open_last_month_attendances(self):
         result = super().action_open_last_month_attendances()
+        result["domain"] = [
+            leaf
+            for leaf in result["domain"]
+            if not (
+                isinstance(leaf, (list, tuple))
+                and len(leaf) >= 2
+                and leaf[0] == "check_in"
+                and leaf[1] == ">="
+            )
+        ]
         result["context"]["search_default_filter_this_month"] = True
         return result
