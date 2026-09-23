@@ -57,7 +57,10 @@ class HrAttendanceTheoreticalTimeReport(models.Model):
             hahe.department_id AS department_id,
             ha.check_in::date AS date,
             ha.leave_hours AS leave_hours,
-            CASE WHEN ha.active THEN ha.worked_hours - COALESCE(ha.rest_hours, 0) ELSE 0 END AS worked_hours,
+            CASE WHEN ha.active
+                THEN ha.worked_hours - COALESCE(ha.rest_hours, 0)
+                ELSE 0
+            END AS worked_hours,
             ha.theoretical_hours AS theoretical_hours
             """
 

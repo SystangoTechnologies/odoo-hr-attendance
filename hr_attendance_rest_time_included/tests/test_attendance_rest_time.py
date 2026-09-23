@@ -67,14 +67,14 @@ class TestHrAttendanceRestTime(BaseCommon):
             }
         )
         # Create rest time records with 30 minutes duration each
-        rest_time_1 = self.env["hr.attendance.rest_time"].create(
+        self.env["hr.attendance.rest_time"].create(
             {
                 "attendance_id": attendance.id,
                 "check_in": "2025-12-22 09:00:00",
                 "check_out": "2025-12-22 09:30:00",
             }
         )
-        rest_time_2 = self.env["hr.attendance.rest_time"].create(
+        self.env["hr.attendance.rest_time"].create(
             {
                 "attendance_id": attendance.id,
                 "check_in": "2025-12-22 11:00:00",
@@ -92,9 +92,13 @@ class TestHrAttendanceRestTime(BaseCommon):
     def test_03_rest_time_deduction_in_report(self):
         """Test that rest time is properly deducted in attendance reports"""
         # Only run if theoretical time report module is installed
-        if not self.env["ir.module.module"].search(
-            [("name", "=", "hr_attendance_report_theoretical_time"), ("state", "=", "installed")]
-        ):
+        theoretical_time_installed = self.env["ir.module.module"].search(
+            [
+                ("name", "=", "hr_attendance_report_theoretical_time"),
+                ("state", "=", "installed"),
+            ]
+        )
+        if not theoretical_time_installed:
             self.skipTest("hr_attendance_report_theoretical_time not installed")
 
         # Create an attendance record with 8 hours worked
