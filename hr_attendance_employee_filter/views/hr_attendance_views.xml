@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <!-- Predefined Employee filter: lets HR managers quickly narrow the
+         Attendance list down to a single employee's records, by reusing the
+         existing "employee_id" field on hr.attendance, without having to
+         configure a Custom Filter. The free text search for "employee_id"
+         already provided by hr_attendance is kept untouched; this adds a
+         one-click selectable panel that complements it and that can be
+         combined with the existing date/attendance filters. -->
+    <record id="hr_attendance_view_search_employee_filter" model="ir.ui.view">
+        <field name="name">hr.attendance.search.employee.filter</field>
+        <field name="model">hr.attendance</field>
+        <field name="inherit_id" ref="hr_attendance.hr_attendance_view_filter" />
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <searchpanel>
+                    <field
+                        name="employee_id"
+                        string="Employee"
+                        icon="fa-user"
+                        enable_counters="1"
+                    />
+                </searchpanel>
+            </xpath>
+        </field>
+    </record>
+</odoo>
