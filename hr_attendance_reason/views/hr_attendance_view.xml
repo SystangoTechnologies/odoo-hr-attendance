@@ -14,6 +14,7 @@
                             widget="many2many_tags"
                             options="{'no_create': True}"
                         />
+                        <field name="is_missing_checkout" readonly="1" />
                     </group>
                 </group>
             </sheet>
@@ -32,6 +33,24 @@
                     options="{'no_create': True}"
                 />
             </field>
+            <tree position="attributes">
+                <attribute name="decoration-danger">is_missing_checkout</attribute>
+            </tree>
+        </field>
+    </record>
+    <record id="hr_attendance_view_search" model="ir.ui.view">
+        <field name="name">hr.attendance.search</field>
+        <field name="model">hr.attendance</field>
+        <field name="type">search</field>
+        <field name="inherit_id" ref="hr_attendance.hr_attendance_view_filter" />
+        <field name="arch" type="xml">
+            <filter name="nocheckout" position="after">
+                <filter
+                    name="missing_checkout"
+                    string="Missing Check-Out"
+                    domain="[('check_in', '!=', False), ('check_out', '=', False)]"
+                />
+            </filter>
         </field>
     </record>
 </odoo>

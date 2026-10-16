@@ -3,7 +3,7 @@
 # Copyright 2023 Tecnativa - Víctor Martínez
 # License LGPL-3 - See http://www.gnu.org/licenses/lgpl-3.0.html
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from odoo.tests import new_test_user, users
 from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT as DF
@@ -59,3 +59,90 @@ class TestHrAttendanceReason(BaseCommon):
             attendance_reason_id=self.att_reason_out.id
         )._attendance_action_change({})
         self.assertIn(self.att_reason_out, attendance.attendance_reason_ids)
+
+
+class TestHrAttendanceMissingCheckout(BaseCommon):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = new_test_user(
+            cls.env,
+            login="test-user-checkout",
+            groups="base.group_user,hr_attendance.group_hr_attendance_own_reader",
+        )
+        cls.employee = cls.env["hr.employee"].create(
+            {"name": cls.user.login, "user_id": cls.user.id}
+        )
+        cls.attendance_model = cls.env["hr.attendance"]
+
+    def test_incomplete_attendance_identified(self):
+        """Test that incomplete attendance records are identified."""
+        now = datetime.now()
+        incomplete = self.attendance_model.create(
+            {
+                "employee_id": self.employee.id,
+                "check_in": now.strftime(DF),
+            }
+        )
+        self.assertTrue(incomplete.is_missing_checkout)
+
+    def test_complete_attendance_not_marked(self):
+        """Test that complete attendance records are not marked as missing checkout."""
+        now = datetime.now()
+        checkout_time = now + timedelta(hours=8)
+        complete = self.attendance_model.create(
+            {
+                "employee_id": self.employee.id,
+                "check_in": now.strftime(DF),
+                "check_out": checkout_time.strftime(DF),
+            }
+        )
+        self.assertFalse(complete.is_missing_checkout)
+
+    def test_filter_missing_checkout(self):
+        """Test that the missing checkout filter works correctly."""
+        now = datetime.now()
+
+        # Create an incomplete record
+        incomplete = self.attendance_model.create(
+            {
+                "employee_id": self.employee.id,
+                "check_in": now.strftime(DF),
+            }
+        )
+
+        # Create a complete record
+        self.attendance_model.create(
+            {
+                "employee_id": self.employee.id,
+                "check_in": (now - timedelta(days=1)).strftime(DF),
+                "check_out": (now - timedelta(days=1) + timedelta(hours=8)).strftime(
+                    DF
+                ),
+            }
+        )
+
+        # Apply the filter for missing checkout
+        filtered = self.attendance_model.search(
+            [("check_in", "!=", False), ("check_out", "=", False)]
+        )
+
+        self.assertIn(incomplete, filtered)
+        self.assertEqual(len(filtered), 1)
+
+    def test_no_checkout_field_computation(self):
+        """Test that is_missing_checkout is computed correctly on update."""
+        now = datetime.now()
+        attendance = self.attendance_model.create(
+            {
+                "employee_id": self.employee.id,
+                "check_in": now.strftime(DF),
+            }
+        )
+
+        # Initially, should be missing checkout
+        self.assertTrue(attendance.is_missing_checkout)
+
+        # After adding checkout, should not be missing checkout
+        attendance.write({"check_out": (now + timedelta(hours=8)).strftime(DF)})
+        self.assertFalse(attendance.is_missing_checkout)
