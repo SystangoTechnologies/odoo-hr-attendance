@@ -2,7 +2,6 @@
 # License LGPL-3 - See http://www.gnu.org/licenses/lgpl-3.0.html
 
 from odoo.tests import new_test_user, users
-from odoo import http
 
 from odoo.addons.base.tests.common import BaseCommon
 
@@ -17,6 +16,7 @@ class TestHrAttendanceReasonDepartment(BaseCommon):
 
         # Import the controller class
         from odoo.addons.hr_attendance_reason_department.controllers import main
+
         cls.controller_class = main.HrAttendance
 
         # Create attendance reasons
@@ -132,7 +132,7 @@ class TestHrAttendanceReasonDepartment(BaseCommon):
 
     @users("test-user-1")
     def test_ac1_department_default_applies(self):
-        """AC1: A department with a default reason applies it to that department's employees."""
+        """AC1: Department default applies to that department's employees."""
         company = self.env.company
         settings = self._get_settings(company, employee=self.employee_1)
 
@@ -183,9 +183,7 @@ class TestHrAttendanceReasonDepartment(BaseCommon):
         )
 
         # Now change department 2's default
-        self.department_2.default_sign_in_reason_id = (
-            self.att_reason_in_dept_2.id
-        )
+        self.department_2.default_sign_in_reason_id = self.att_reason_in_dept_2.id
 
         # Re-check settings
         settings_1_updated = self._get_settings(company, employee=self.employee_1)
