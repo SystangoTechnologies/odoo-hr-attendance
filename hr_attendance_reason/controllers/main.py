@@ -43,13 +43,20 @@ class HrAttendance(HrAttendance):
     def manual_selection_with_geolocation(
         self, token, employee_id, pin_code, latitude=False, longitude=False
     ):
-        if request.params.get("attendance_reason_id"):
+        attendance_reason_id = request.params.get("attendance_reason_id")
+        if attendance_reason_id:
             request.update_context(
-                attendance_reason_id=int(request.params.get("attendance_reason_id"))
+                attendance_reason_id=int(attendance_reason_id)
             )
-        return super().manual_selection_with_geolocation(
+        result = super().manual_selection_with_geolocation(
             token, employee_id, pin_code, latitude, longitude
         )
+        # Enrich response with reason code if a reason was provided
+        if attendance_reason_id and result:
+            reason = request.env["hr.attendance.reason"].sudo().browse(int(attendance_reason_id))
+            if reason.exists():
+                result["attendance_reason_code"] = reason.code
+        return result
 
     # new routes
     @route("/hr_attendance_reason/get_reasons", type="json", auth="public")
@@ -110,5 +117,5 @@ class HrAttendance(HrAttendance):
                 ("action_type", "=", action_type),
                 ("company_id", "in", [False, company.id]),
             ],
-            fields=["name", "action_type"],
+            fields=["name", "action_type", "code"],
         )

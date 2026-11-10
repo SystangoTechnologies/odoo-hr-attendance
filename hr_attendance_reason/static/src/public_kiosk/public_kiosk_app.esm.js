@@ -50,6 +50,8 @@ patch(PublicKiosk.kioskAttendanceApp.prototype, {
         });
         if (result && result.attendance) {
             this.employeeData = result;
+            // Store the attendance reason code for display on greet screen
+            this.attendance_reason_code = result.attendance_reason_code || false;
             this.switchDisplay("greet");
         } else if (enteredPin) {
             this.displayNotification(_t("Wrong Pin"));
