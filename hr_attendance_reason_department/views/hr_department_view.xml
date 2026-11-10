@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="hr_view_department_form_inherit_attendance_reason" model="ir.ui.view">
+        <field name="name">hr.department.form.attendance.reason</field>
+        <field name="model">hr.department</field>
+        <field name="inherit_id" ref="hr.view_department_form" />
+        <field name="arch" type="xml">
+            <group name="group_manager" position="after">
+                <group
+                    name="group_attendance_reason"
+                    string="Attendance Reasons"
+                    groups="hr_attendance.group_hr_attendance_manager"
+                >
+                    <field name="default_sign_in_reason_id" />
+                    <field name="default_sign_out_reason_id" />
+                </group>
+            </group>
+        </field>
+    </record>
+</odoo>
