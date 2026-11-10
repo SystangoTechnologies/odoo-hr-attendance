@@ -26,6 +26,12 @@ msgid "An attendance reason is required!"
 msgstr ""
 
 #. module: hr_attendance_reason
+#: code:addons/hr_attendance_reason/models/hr_employee.py:0
+#, python-format
+msgid "An attendance reason is required for sign-out."
+msgstr ""
+
+#. module: hr_attendance_reason
 #: model:ir.model,name:hr_attendance_reason.model_hr_attendance
 msgid "Attendance"
 msgstr ""
