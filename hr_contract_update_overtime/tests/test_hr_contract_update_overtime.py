@@ -261,8 +261,25 @@ class HRContractUpdateOvertime(TransactionCase):
         # Check if the employee has 3 contracts
         self.assertEqual(len(self.employee.contract_ids), 3)
 
-        # Execute the action to update overtime over the contracts
-        self.employee.contract_ids.action_update_overtime()
+        # Get the wizard action by calling action_update_overtime
+        action = self.employee.contract_ids.action_update_overtime()
+        self.assertEqual(action["res_model"], "wizard.update.overtime")
+
+        # Create wizard using the action's context
+        wizard = (
+            self.env["wizard.update.overtime"]
+            .with_context(**action.get("context", {}))
+            .create({})
+        )
+
+        # Verify wizard preview data
+        self.assertEqual(len(wizard.contract_ids), 3)
+        self.assertEqual(len(wizard.employee_ids), 1)
+        self.assertEqual(wizard.employee_ids, self.employee)
+        self.assertEqual(wizard.overtime_days_count, 3)  # 3 distinct attendance days
+
+        # Confirm the wizard to execute the update
+        wizard.action_confirm()
 
         # Check Overtime
         total_overtime = (
@@ -279,3 +296,30 @@ class HRContractUpdateOvertime(TransactionCase):
         # Check Leaves has been moved correctly
         for contract in self.employee.contract_ids:
             self.assertEqual(len(contract.resource_calendar_id.leave_ids), 1)
+
+    def test_update_overtime_wizard_cancel(self):
+        """Test that creating the wizard without confirming doesn't update overtime."""
+        # Check if the employee has 3 contracts
+        self.assertEqual(len(self.employee.contract_ids), 3)
+
+        # Verify no overtime records exist initially
+        overtime_records = self.env["hr.attendance.overtime"].search(
+            [("employee_id", "=", self.employee.id)]
+        )
+        self.assertEqual(len(overtime_records), 0)
+
+        # Create the wizard but don't confirm
+        action = self.employee.contract_ids.action_update_overtime()
+        wizard = (
+            self.env["wizard.update.overtime"]
+            .with_context(**action.get("context", {}))
+            .create({})
+        )
+
+        # Just create it without calling action_confirm
+        # The wizard is a transient model and will be garbage collected
+        # No overtime should have been updated
+        overtime_records = self.env["hr.attendance.overtime"].search(
+            [("employee_id", "=", self.employee.id)]
+        )
+        self.assertEqual(len(overtime_records), 0)
