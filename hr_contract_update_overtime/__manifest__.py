@@ -18,6 +18,7 @@
         "hr_attendance",
     ],
     "data": [
+        "wizards/wizard_update_overtime_views.xml",
         "data/hr_contract_history_data.xml",
     ],
 }

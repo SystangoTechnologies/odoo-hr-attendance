@@ -20,14 +20,21 @@ class HrContract(models.Model):
         )
 
     def action_update_overtime(self):
-        for record in self:
-            if record.state not in {"open", "close"}:
-                continue
-            attendances = record._get_attendances()
-            attendances._update_overtime()
-            record.message_post(
-                body=_("Overtime updated"),
-                subtype_xmlid="mail.mt_note",
-                message_type="comment",
-                author_id=self.env.user.partner_id.id,
-            )
+        """Open the wizard to preview and confirm overtime update."""
+        # Filter to only valid contracts
+        valid_contracts = self.filtered(lambda c: c.state in ("open", "close"))
+        if not valid_contracts:
+            return {"type": "ir.actions.act_window_close"}
+
+        # Return wizard action with contract IDs in context
+        return {
+            "name": _("Update Overtime"),
+            "type": "ir.actions.act_window",
+            "res_model": "wizard.update.overtime",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_contract_ids": valid_contracts.ids,
+                "active_ids": valid_contracts.ids,
+            },
+        }
