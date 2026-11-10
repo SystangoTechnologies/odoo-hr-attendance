@@ -17,5 +17,12 @@
                 <input t-ref="attendance_reason" type="hidden" />
             </t>
         </xpath>
+        <xpath expr="//t[@t-name='hr_attendance.Greet'][1]//t[@t-call='hr_attendance.EmployeeBadge']/.." position="after">
+            <t t-if="this.state.active_display === 'greet' and this.attendance_reason_code">
+                <div class="mt-3 text-center">
+                    <span class="badge bg-info text-white fs-6" t-esc="this.attendance_reason_code" />
+                </div>
+            </t>
+        </xpath>
     </t>
 </templates>
